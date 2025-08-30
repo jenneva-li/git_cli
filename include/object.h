@@ -20,6 +20,7 @@ public:
     std::string get_type() const;
     size_t get_size() const;
     std::string get_content() const;
+    
 protected:
     const GitRepository* repo;
     std::string fmt;
@@ -27,7 +28,7 @@ protected:
     std::string content;
 };
 
-#endif // OBJECT_H
-
 std::shared_ptr<GitObject> read_object(const GitRepository& repo, const std::string& sha);
 std::string write_object(const GitRepository& repo, const std::string& data);
+
+#endif // OBJECT_H
