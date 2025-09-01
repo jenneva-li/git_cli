@@ -12,8 +12,7 @@
 
 namespace fs = std::filesystem;
 
-int cmd_init(const std::vector<std::string> &args)
-{
+int cmd_init(const std::vector<std::string> &args) {
     if (args.size() < 2) {
         std::cerr << "Usage: init <repository-path>" << std::endl;
         return 1;
@@ -23,8 +22,7 @@ int cmd_init(const std::vector<std::string> &args)
     return 0;
 }
 
-int cmd_cat_file(const std::vector<std::string> &args)
-{
+int cmd_cat_file(const std::vector<std::string> &args) {
     if (args.size() < 4) {
         std::cerr << "Usage: cat-file <type> <object>" << std::endl;
         return 1;
@@ -32,11 +30,10 @@ int cmd_cat_file(const std::vector<std::string> &args)
     const std::string &type = args[2];
     const std::string &object = args[3];
     
-    try 
-    {
-        GitRepository repo = GitRepository::repo_find();
-        std::shared_ptr<GitObject> obj = read_object(repo, object);
-        
+    try {
+        GitRepository repo = GitRepository::repo_find(fs::current_path(), true);
+        std::string obj_name = find_object(repo, object);
+        std::shared_ptr<GitObject> obj = read_object(repo, obj_name);
         if (type == "-p") {
             std::cout << obj->get_content() << std::endl;
             return 0;
@@ -52,16 +49,14 @@ int cmd_cat_file(const std::vector<std::string> &args)
             return 1;
         }
     } 
-    catch (const std::exception &e) 
-    {
+    catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
     return 0;
 }
 
-int process_command(const std::vector<std::string> &args)
-{
+int process_command(const std::vector<std::string> &args) {
     int status = 0;
     if (args.empty()) {
         std::cerr << "No command provided." << std::endl;
@@ -73,34 +68,14 @@ int process_command(const std::vector<std::string> &args)
         status = cmd_init(args);
     else if (command == "cat-file") 
         status = cmd_cat_file(args);
-    // else if (command == "merge")
-    //     status = cmd_merge(args);
-    // else if (command == "commit")
-    //     status = cmd_commit(args);
-    // else if (command == "rm")
-    //     status = cmd_rm(args);
-    // else if (command == "log") 
-    //     status = cmd_log(args);
-    // else if (command == "hash-object") 
-    //     status = cmd_hash_object(args);
-    // else if (command == "ls-tree") 
-    //     status = cmd_ls_tree(args);
-    // else if (command == "show-ref") 
-    //     status = cmd_show_ref(args);
-    // else if (command == "checkout") 
-    //     status = cmd_checkout(args);
-    // else if (command == "tags") 
-    //     status = cmd_tags(args);
-    else
-    {
+    else {
         std::cerr << "Unknown command: " << command << std::endl;
         status = 1;
     }
     return status;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     std::vector<std::string> args(argv, argv + argc);
     return process_command(args);
 }
