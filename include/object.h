@@ -15,8 +15,8 @@ namespace fs = std::filesystem;
 class GitObject{
 public:
     GitObject(const GitRepository& repo, const std::string& data = "");
-    virtual std::string serialize() const;
-    virtual void deserialize(const std::string& data);
+    virtual std::string serialize() const = 0;
+    virtual void deserialize(const std::string& data) = 0;
     std::string get_type() const;
     size_t get_size() const;
     std::string get_content() const;
@@ -30,5 +30,6 @@ protected:
 std::string find_object(const GitRepository& repo, const std::string& sha);
 std::shared_ptr<GitObject> read_object(const GitRepository& repo, const std::string& sha);
 std::string write_object(const GitRepository& repo, const std::string& data);
+std::string hash_object(const GitRepository& repo, const std::string& data, const std::string& fmt, bool write);
 
 #endif // OBJECT_H
