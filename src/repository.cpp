@@ -11,13 +11,11 @@ namespace fs = std::filesystem;
 
 ConfigParser GitRepository::config;
 
-GitRepository::GitRepository(const fs::path& path, bool force) 
-{
+GitRepository::GitRepository(const fs::path& path, bool force) {
     worktree = path;
     gitdir = path / ".git";
 
-    if (!force && !fs::is_directory(gitdir)) 
-    {
+    if (!force && !fs::is_directory(gitdir)) {
         throw std::runtime_error("Not a Git repository: " + path.string());
     }
     configFile = repo_file(*this, "config");
@@ -25,12 +23,10 @@ GitRepository::GitRepository(const fs::path& path, bool force)
     if(fs::exists(configFile)){
         config.load(configFile);
     }
-    else if(!force)
-    {
+    else if(!force) {
         throw std::runtime_error("Configuration file missing");
     }
-    if (!force)
-    {
+    if (!force){
         std::string version = config.get("core", "repositoryformatversion");
         if (version != "0") {
             throw std::runtime_error("Unsupported repository format version: " + version);
@@ -63,18 +59,15 @@ fs::path GitRepository::repo_file(const GitRepository& repo, const fs::path& fil
     return repo.gitdir / file;
 }
 
-GitRepository GitRepository::repo_create(const fs::path& path) 
-{
+GitRepository GitRepository::repo_create(const fs::path& path) {
     auto repo = GitRepository(path, true);
-    if (fs::exists(repo.worktree)) 
-    {
+    if (fs::exists(repo.worktree)) {
         if (!fs::is_directory(repo.worktree))
             throw std::runtime_error("Not a directory: " + path.string());
         if (!fs::is_empty(repo.worktree))
             throw std::runtime_error("Directory not empty: " + path.string());
     } 
-    else 
-    {
+    else {
         fs::create_directories(path);
     }
 
@@ -103,21 +96,17 @@ GitRepository GitRepository::repo_create(const fs::path& path)
     return repo;
 }
 
-GitRepository GitRepository::repo_find(const fs::path& path, bool required) 
-{
+GitRepository GitRepository::repo_find(const fs::path& path, bool required) {
     fs::path gitdir = path / ".git";
     if (fs::is_directory(gitdir)) {
         return GitRepository(path);
     }
     fs::path parent = path.parent_path();
-    if(path==parent)
-    {
-        if(required)
-        {
+    if(path==parent) {
+        if(required) {
             throw std::runtime_error("No Git repository found");
         }
-        else
-        {
+        else {
             return GitRepository(fs::path());
         }
     }
