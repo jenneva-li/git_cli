@@ -1,3 +1,6 @@
+#ifndef GIT_BLOB_H
+#define GIT_BLOB_H
+
 #include <iostream>
 
 #include "object.h"
@@ -8,3 +11,5 @@ public:
     virtual std::string serialize() const override;
     virtual void deserialize(const std::string& data) override;
 };
+
+#endif // GIT_BLOB_H
