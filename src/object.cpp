@@ -15,9 +15,8 @@ namespace fs = std::filesystem;
 
 GitObject::GitObject(const GitRepository& repo, const std::string& data) {
     this->repo = &repo; 
-    if (!data.empty()) {
-        deserialize(data);
-    }
+    this->content = data;
+    this->size = data.size();
 }
 
 std::string GitObject::serialize() const {
@@ -133,18 +132,34 @@ std::string find_object(const GitRepository &repo, const std::string &sha) {
                std::string filename = entry.path().filename().string();
                 if (filename.compare(0, rest.size(), rest) == 0) {
                    matches.push_back(sha.substr(0, 2) + filename);
-               }
-           }
-           if (matches.empty()) {
-               throw std::runtime_error("Object not found");
-           }
-           if(matches.size() > 1) {
+                }
+            }
+            if (matches.empty()) {
+                throw std::runtime_error("Object not found");
+            }
+            if(matches.size() > 1) {
                throw std::runtime_error("Ambiguous object reference");
-           }
+            }
         }
         else {
             throw std::runtime_error("Object not found");
         }
         return matches.front();
     }
+}
+
+std::string hash_object(const GitRepository &repo, const std::string &data, const std::string &fmt, bool write) {
+    std::shared_ptr<GitObject> obj;
+    if (fmt == "blob" || fmt.empty()) {
+        obj = std::make_shared<GitBlob>(repo, data);
+    }
+    else {
+        throw std::runtime_error("Unknown object type: " + fmt);
+    }
+    std::string sha = write_object(repo, *obj);
+    if (write == true) {
+        fs::path file = fs::path("objects") / sha.substr(0, 2) / sha.substr(2);
+        fs::path path = GitRepository::repo_file(repo, file);
+    }
+    return sha;
 }

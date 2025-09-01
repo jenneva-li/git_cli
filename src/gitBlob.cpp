@@ -5,8 +5,9 @@
 
 GitBlob::GitBlob(const GitRepository& repo, const std::string& data) : GitObject(repo, data) {
     this->fmt = "blob";
-    this->content = data;
-    this->size = data.size();
+    if (!data.empty()) {
+        deserialize(data);
+    }
 }
 
 std::string GitBlob::serialize() const {
