@@ -6,9 +6,11 @@
 #include <vector>
 #include <exception>
 #include <memory>
+#include <map>
 
 #include "repository.h"
 #include "object.h"
+#include "gitCommit.h"
 
 namespace fs = std::filesystem;
 
@@ -94,6 +96,63 @@ int cmd_hash_object(const std::vector<std::string> &args) {
     return 0;
 }
 
+int log_graphviz(GitRepository &repo, const std::string& sha, std::set<std::string>& seen) {
+
+    if (seen.count(sha)) 
+        return 0;
+    seen.insert(sha);
+    
+    const auto& commit_obj = read_object(repo, sha);
+    if (commit_obj == nullptr) {
+        throw std::runtime_error("Object not found: " + sha);
+        return 1;
+    }
+    else if (commit_obj->get_type() != "commit") {
+        throw std::runtime_error("Not a commit object: " + sha);
+        return 1;
+    }
+    auto commit = std::dynamic_pointer_cast<GitCommit>(commit_obj);
+    std::string msg = commit->get_message();
+    std::cout << " c_" << sha << " [label=\"" << sha.substr(0, 7) << ": " << msg << "\"];\n";
+
+    auto parents = commit->get_value("parent");
+    for (const std::string& parent : parents) {
+        std::cout << " c_" << sha << " -> c_" << parent << ";\n";
+        log_graphviz(repo, parent, seen);
+    }
+    return 0;
+}
+
+int cmd_log(const std::vector<std::string> &args) {
+    int status = 0;
+    
+    if (args.size() < 3) {
+        std::cerr << "Usage: log <commit>" << std::endl;
+        return 1;
+    }
+    const std::string &commit = args[2];
+    
+    try {
+        GitRepository repo = GitRepository::repo_find(fs::current_path(), true);
+        std::string obj_name = find_object(repo, commit);
+        std::shared_ptr<GitObject> obj = read_object(repo, obj_name);
+        if (obj->get_type() != "commit") {
+            throw std::runtime_error("Object is not a commit: " + commit);
+        }
+        std::cout<< "digraph log {" << std::endl;
+        std::set<std::string> seen;
+        status = log_graphviz(repo, obj_name, seen);
+        if (status == 0) {
+            std::cout << "}\n";
+        }
+    } 
+    catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+    return status;
+}
+
 int process_command(const std::vector<std::string> &args) {
     int status = 0;
     if (args.empty()) {
@@ -108,6 +167,8 @@ int process_command(const std::vector<std::string> &args) {
         status = cmd_cat_file(args);
     else if (command == "hash-object")
         status = cmd_hash_object(args);
+    else if (command == "log")
+        status = cmd_log(args);
     else {
         std::cerr << "Unknown command: " << command << std::endl;
         status = 1;
