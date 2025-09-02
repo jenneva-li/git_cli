@@ -10,6 +10,7 @@
 #include "sha1/sha1.hpp"
 #include "object.h"
 #include "gitBlob.h"
+#include "gitCommit.h"
 
 namespace fs = std::filesystem;
 
@@ -92,6 +93,9 @@ std::shared_ptr<GitObject> read_object(const GitRepository &repo, const std::str
     std::shared_ptr<GitObject> obj;
     if (fmt == "blob") {
         obj = std::make_shared<GitBlob>(repo);
+    }
+    else if (fmt == "commit") {
+        obj = std::make_shared<GitCommit>(repo);
     }
     else {
         throw std::runtime_error("Unknown object type: " + fmt);
