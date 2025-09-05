@@ -5,8 +5,7 @@
 #include "gitCommit.h"
 
 // KVLM: Key-Value List with Message
-std::vector<KVLMEntry> GitCommit::kvlm_parse(const std::string &input)
-{
+std::vector<KVLMEntry> GitCommit::kvlm_parse(const std::string &input) {
     std::vector<KVLMEntry> kvlm;
     std::string line;
     std::istringstream stream(input);
