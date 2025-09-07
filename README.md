@@ -106,6 +106,7 @@ git_cli ls-tree [options] <tree-ish> [path]
 - `-r` — recursive
 - `--name only` — only show file names
 - `--long` — show detailed info (mode, type, SHA, size, path)
+  
 **Example:**
 ```
 git_cli ls-tree -r 4a7d1f
