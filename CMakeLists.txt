@@ -18,3 +18,5 @@ add_executable(git_cli main.cpp ${SRC_FILES})
 
 find_package(ZLIB REQUIRED)
 target_link_libraries(git_cli PRIVATE ZLIB::ZLIB)
+
+install(TARGETS git_cli RUNTIME DESTINATION bin)
