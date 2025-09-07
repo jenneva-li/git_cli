@@ -4,7 +4,7 @@
 
 ## Table of Contents
 - [Introduction](#introduction)
-- [Prerequisite](#prerequisite)
+- [Prerequisites](#prerequisites)
 - [Quickstart](#quickstart)
 - [Commands](#commands)
 
