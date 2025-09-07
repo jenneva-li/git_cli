@@ -15,6 +15,10 @@ std::string GitBlob::serialize() const {
 }
 
 void GitBlob::deserialize(const std::string& data) {
-    this->content = data;
-    this->size = data.size();
+    auto pos = data.find('\0');
+    if (pos != std::string::npos) {
+        throw std::runtime_error("Invalid blob data: contains null byte");
+    }
+    this->content = data.substr(pos + 1);
+    this->size = content.size();
 }

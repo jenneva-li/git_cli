@@ -184,32 +184,73 @@ int cmd_ls_tree(const std::vector<std::string> &args) {
     GitRepository repo = GitRepository::repo_find(fs::current_path(), true);
     std::string tree_sha = find_object(repo, treeish);
     auto obj = read_object(repo, tree_sha);
-    if (obj->get_type() != "tree")
-    {
+    if (obj->get_type() != "tree") {
         throw std::runtime_error("Object is not a tree: " + tree_sha);
     }
     auto tree = std::dynamic_pointer_cast<GitTree>(obj);
     auto entries = tree->get_entries();
-    if (opt_recursive)
-    {
+    if (opt_recursive) {
         tree->recursive_ls_tree(repo, tree_sha, path);
         return 0;
     }
-    for (const auto &entry : entries)
-    {
+    for (const auto &entry : entries) {
         auto entry_obj = read_object(repo, entry.sha);
-        if (opt_name_only)
-        {
+        if (opt_name_only) {
             std::cout << entry.path << std::endl;
             continue;
         }
-        if (opt_long)
-        {
+        if (opt_long){
             std::cout << entry.mode << " " << entry_obj->get_type() << " " << entry.sha << "\t" << entry_obj->get_size() << "\t" << entry.path << std::endl;
             continue;
         }
         std::cout << entry.mode << " " << entry_obj->get_type() << " " << entry.sha << "\t" << entry.path << std::endl;
     }
+    return 0;
+}
+
+int cmd_checkout(const std::vector<std::string> &args) {
+    if (args.size() < 3) {
+        std::cerr << "Usage: checkout <branch>" << std::endl;
+        return 1;
+    }
+    std::string branch = args[2];
+    fs::path branch_path;
+    if (args.size() > 3) {
+        branch_path = args[3];
+    } else {
+        branch_path = fs::current_path();
+    }
+
+    GitRepository repo = GitRepository::repo_find(fs::current_path(), true);
+    std::string sha = branch_sha(repo, branch);
+    std::shared_ptr<GitObject> obj = read_object(repo, sha);
+
+    if (obj->get_type() != "commit") {
+        std::cerr << "Branch does not point to a commit: " << branch << std::endl;
+        return 1;
+    }
+
+    auto commit = std::dynamic_pointer_cast<GitCommit>(obj);
+    if (commit->get_value("tree").empty()) {
+        std::cerr << "Commit has no tree." << std::endl;
+        return 1;
+    }
+    std::string tree_sha = commit->get_value("tree").front();
+
+    obj = read_object(repo, tree_sha);
+    if (fs::exists(branch_path)) {
+        if (!fs::is_directory(branch_path)) {
+            std::cerr << "Target path is not a directory: " << branch_path.string() << std::endl;
+            return 1;
+        }
+        if (!fs::is_empty(branch_path)) {
+            std::cerr << "Target directory is not empty: " << branch_path.string() << std::endl;
+            return 1;
+        }
+    } else {
+        fs::create_directories(branch_path);
+    }
+    tree_checkout(repo, tree_sha, branch_path);
     return 0;
 }
 
@@ -231,6 +272,8 @@ int process_command(const std::vector<std::string> &args) {
         status = cmd_log(args);
     else if (command == "ls-tree")
         status = cmd_ls_tree(args);
+    else if (command == "checkout")
+        status = cmd_checkout(args);
     else {
         std::cerr << "Unknown command: " << command << std::endl;
         status = 1;
