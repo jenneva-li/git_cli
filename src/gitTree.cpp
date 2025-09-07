@@ -2,12 +2,12 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>   
+#include <array>
 
 #include "gitTree.h"
 
-std::pair<size_t, GitTreeEntry> GitTree::parse_single_tree(const std::vector<unsigned char>& data) {
+std::pair<size_t, GitTreeEntry> GitTree::parse_single_tree(const std::vector<unsigned char>& data, size_t pos) {
     GitTreeEntry entry;
-    size_t pos = 0;
 
     while (pos < data.size() && data[pos] != ' ') {
         entry.mode.push_back(static_cast<char>(data[pos]));
@@ -30,7 +30,13 @@ std::pair<size_t, GitTreeEntry> GitTree::parse_single_tree(const std::vector<uns
     if (pos + 20 > data.size()) {
         throw std::runtime_error("Invalid tree format: not enough data for SHA");
     }
-    entry.sha = std::string(reinterpret_cast<const char*>(&data[pos]), 20);
+    std::ostringstream hexsha;
+    for (int i = 0; i < 20; ++i)
+    {
+        hexsha << std::hex << std::setw(2) << std::setfill('0')
+               << static_cast<int>(data[pos + i]);
+    }
+    entry.sha = hexsha.str();
     pos += 20;
 
     return {pos, entry};
@@ -40,7 +46,7 @@ std::vector<GitTreeEntry> GitTree::parse_tree(const std::vector<unsigned char>& 
     size_t pos = 0;
     std::vector<GitTreeEntry> entries;
     while (pos < data.size()) {
-        auto [new_pos, tree_data] = parse_single_tree(std::vector<unsigned char>(data.begin() + pos, data.end()));
+        auto [new_pos, tree_data] = parse_single_tree(data, pos);
         entries.push_back(tree_data);
         pos = new_pos;
     }
@@ -70,7 +76,7 @@ std::string GitTree::serialize_tree(const std::vector<GitTreeEntry>& entries) co
         result.push_back(' ');
         result.append(entry.path);
         result.push_back('\0');
-        result.append(entry.sha.data(), entry.sha.size());
+        result.append(reinterpret_cast<const char*>(entry.sha.data()), entry.sha.size());
     }
     return result;
 }
@@ -83,4 +89,25 @@ void GitTree::deserialize(const std::string& data) {
     this->content = data;
     this->size = data.size();
     this->entries = parse_tree(std::vector<unsigned char>(data.begin(), data.end()));
+}
+
+void GitTree::recursive_ls_tree(const GitRepository& repo, const std::string& tree_sha, const std::string& prefix) {
+    auto obj = read_object(repo, tree_sha);
+    if (obj->get_type() != "tree") {
+        throw std::runtime_error("Object is not a tree: " + tree_sha);
+    }
+    auto tree = std::dynamic_pointer_cast<GitTree>(obj);
+    auto entries = tree->get_entries();
+    for (const auto& entry : entries) {
+        auto entry_obj = read_object(repo, entry.sha);
+        std::string full_path = prefix.empty() ? entry.path : prefix + "/" + entry.path;
+        std::cout << entry.mode << " " << entry_obj->get_type() << " " << entry.sha << "\t" << full_path << std::endl;
+        if (entry.mode == "40000") {
+            tree->recursive_ls_tree(repo, entry.sha, full_path);
+        }
+    }
+}
+
+std::vector<GitTreeEntry> GitTree::get_entries() const {
+    return this->entries;
 }

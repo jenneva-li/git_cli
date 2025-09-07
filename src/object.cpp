@@ -11,6 +11,7 @@
 #include "object.h"
 #include "gitBlob.h"
 #include "gitCommit.h"
+#include "gitTree.h"
 
 namespace fs = std::filesystem;
 
@@ -51,7 +52,7 @@ std::vector<unsigned char> compress_data(const std::vector<unsigned char>& data)
 }
 
 std::vector<unsigned char> decompress_data(const std::vector<unsigned char>& compressed_data) {
-    uLongf buffer = 1000000;
+    uLongf buffer = 1000000000;
     std::vector<unsigned char> decompressed_data(buffer);
     if (uncompress(decompressed_data.data(), &buffer, compressed_data.data(), compressed_data.size()) != Z_OK) {
         throw std::runtime_error("Failed to decompress data");
@@ -86,10 +87,9 @@ std::shared_ptr<GitObject> read_object(const GitRepository &repo, const std::str
     if (space_pos == decompressed_data.end() || null_pos == decompressed_data.end()) {
         throw std::runtime_error("Invalid object format: space or null not found");
     }
-
-    std::string original_size_str(space_pos+1, null_pos);
-    uLong original_size = std::stoul(original_size_str);
+    std::string original_size_str(reinterpret_cast<char*>(&*(space_pos+1)), std::distance(space_pos+1, null_pos));
     std::string fmt(decompressed_data.begin(), space_pos);
+    std::vector<unsigned char> content(null_pos + 1, decompressed_data.end());
     std::shared_ptr<GitObject> obj;
     if (fmt == "blob") {
         obj = std::make_shared<GitBlob>(repo);
@@ -97,10 +97,13 @@ std::shared_ptr<GitObject> read_object(const GitRepository &repo, const std::str
     else if (fmt == "commit") {
         obj = std::make_shared<GitCommit>(repo);
     }
+    else if (fmt == "tree") {
+        obj = std::make_shared<GitTree>(repo);
+    }
     else {
         throw std::runtime_error("Unknown object type: " + fmt);
     }
-    obj->deserialize(std::string(decompressed_data.begin(), decompressed_data.end()));
+    obj->deserialize(std::string(content.begin(), content.end()));
     return obj;
 };
 

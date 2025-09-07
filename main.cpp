@@ -11,15 +11,16 @@
 #include "repository.h"
 #include "object.h"
 #include "gitCommit.h"
+#include "gitTree.h"
 
 namespace fs = std::filesystem;
 
 int cmd_init(const std::vector<std::string> &args) {
-    if (args.size() < 2) {
+    if (args.size() < 1) {
         std::cerr << "Usage: init <repository-path>" << std::endl;
         return 1;
     }
-    fs::path repo_path = args[2];
+    fs::path repo_path = fs::current_path();
     GitRepository::repo_create(repo_path);
     return 0;
 }
@@ -153,6 +154,65 @@ int cmd_log(const std::vector<std::string> &args) {
     return status;
 }
 
+int cmd_ls_tree(const std::vector<std::string> &args) {
+    if (args.size() < 2) {
+        std::cerr << "Usage: ls-tree [options] <tree-ish> [path]" << std::endl;
+        std::cerr << "Options: -r, --name-only, --long" << std::endl;
+        return 1;
+    }
+    std::string treeish;
+    std::string path;
+    bool opt_recursive = false;
+    bool opt_name_only = false;
+    bool opt_long = false;
+
+    for (size_t i = 2; i < args.size(); ++i) {
+        const std::string &arg = args[i];
+        if (arg == "-r") {
+            opt_recursive = true;
+        } else if (arg == "--name-only") {
+            opt_name_only = true;
+        } else if (arg == "--long") {
+            opt_long = true;
+        } else if (treeish.empty()) {
+            treeish = arg;
+        } else {
+            path = arg;
+        }
+    }
+   
+    GitRepository repo = GitRepository::repo_find(fs::current_path(), true);
+    std::string tree_sha = find_object(repo, treeish);
+    auto obj = read_object(repo, tree_sha);
+    if (obj->get_type() != "tree")
+    {
+        throw std::runtime_error("Object is not a tree: " + tree_sha);
+    }
+    auto tree = std::dynamic_pointer_cast<GitTree>(obj);
+    auto entries = tree->get_entries();
+    if (opt_recursive)
+    {
+        tree->recursive_ls_tree(repo, tree_sha, path);
+        return 0;
+    }
+    for (const auto &entry : entries)
+    {
+        auto entry_obj = read_object(repo, entry.sha);
+        if (opt_name_only)
+        {
+            std::cout << entry.path << std::endl;
+            continue;
+        }
+        if (opt_long)
+        {
+            std::cout << entry.mode << " " << entry_obj->get_type() << " " << entry.sha << "\t" << entry_obj->get_size() << "\t" << entry.path << std::endl;
+            continue;
+        }
+        std::cout << entry.mode << " " << entry_obj->get_type() << " " << entry.sha << "\t" << entry.path << std::endl;
+    }
+    return 0;
+}
+
 int process_command(const std::vector<std::string> &args) {
     int status = 0;
     if (args.empty()) {
@@ -169,6 +229,8 @@ int process_command(const std::vector<std::string> &args) {
         status = cmd_hash_object(args);
     else if (command == "log")
         status = cmd_log(args);
+    else if (command == "ls-tree")
+        status = cmd_ls_tree(args);
     else {
         std::cerr << "Unknown command: " << command << std::endl;
         status = 1;
