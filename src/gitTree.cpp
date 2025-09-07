@@ -5,6 +5,7 @@
 #include <array>
 
 #include "gitTree.h"
+#include "gitBlob.h"
 
 std::pair<size_t, GitTreeEntry> GitTree::parse_single_tree(const std::vector<unsigned char>& data, size_t pos) {
     GitTreeEntry entry;
@@ -110,4 +111,46 @@ void GitTree::recursive_ls_tree(const GitRepository& repo, const std::string& tr
 
 std::vector<GitTreeEntry> GitTree::get_entries() const {
     return this->entries;
+}
+
+std::string branch_sha(const GitRepository &repo, const std::string &branch) {
+    fs::path head_path = repo.get_gitdir() / "refs" / "heads" / branch;
+    if (!fs::exists(head_path)) {
+        throw std::runtime_error("Branch not found: " + branch);
+    }
+    std::ifstream head_file(head_path);
+    std::string sha;
+    std::getline(head_file, sha);
+    return sha;
+}
+
+void tree_checkout(const GitRepository &repo, const std::string &tree_sha, const fs::path &target_path) {
+    auto obj = read_object(repo, tree_sha);
+    if (!obj) {
+        throw std::runtime_error("Object not found.");
+    }
+    if (obj->get_type() != "tree") {
+        throw std::runtime_error("Object is not a tree: " + tree_sha);
+    }
+    auto tree = std::dynamic_pointer_cast<GitTree>(obj);
+    auto entries = tree->get_entries();
+    for (const auto &entry : entries) {
+        auto entry_obj = read_object(repo, entry.sha);
+        if (!entry_obj) {
+            throw std::runtime_error("Object not found.");
+        }
+        fs::path entry_path = target_path / entry.path;
+        if (entry_obj->get_type() == "tree") {
+            fs::create_directories(entry_path);
+            tree_checkout(repo, entry.sha, entry_path);
+        }
+        else if (entry_obj->get_type() == "blob") {
+            std::shared_ptr<GitBlob> blob_obj = std::dynamic_pointer_cast<GitBlob>(entry_obj);
+            std::ofstream ofs(entry_path, std::ios::binary);
+            ofs << blob_obj->serialize();
+        }
+        else {
+            throw std::runtime_error("Unsupported object type: " + entry_obj->get_type());
+        }
+    }
 }

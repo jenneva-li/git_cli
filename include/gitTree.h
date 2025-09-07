@@ -33,4 +33,7 @@ private:
     std::string serialize_tree(const std::vector<GitTreeEntry>& entries) const;
 };
 
+std::string branch_sha(const GitRepository &repo, const std::string &branch);
+void tree_checkout(const GitRepository &repo, const std::string &tree_sha, const fs::path &target_path);
+
 #endif // GIT_TREE_H
