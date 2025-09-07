@@ -57,7 +57,7 @@ This downloads and extracts the library locally into the project, so no system-w
    echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
    source ~/.bashrc
    ```
-## Commands:
+## Commands
 ### `init`
 Initialize a new Git repository in the current directory (or a specified path).
 ```
