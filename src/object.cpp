@@ -72,13 +72,11 @@ std::shared_ptr<GitObject> read_object(const GitRepository &repo, const std::str
     char dataByte;
     while (file.get(dataByte)) {
         compressed_data.push_back(static_cast<unsigned char>(dataByte));
-    
     }
     file.close();
 
     if (compressed_data.empty()) {
         throw std::runtime_error("Empty object file");
-    
     }
 
     std::vector<unsigned char> decompressed_data = decompress_data(compressed_data);
